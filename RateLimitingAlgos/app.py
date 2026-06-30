@@ -1,10 +1,10 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 
-from RateLimitingAlgos.RateLimiter import RateLimiterManager
+from RateLimitingAlgos.token_bucket import RateLimiterManagerTokenBucket
 
 app = FastAPI()
-manager = RateLimiterManager()
+manager = RateLimiterManagerTokenBucket()
 
 
 @app.on_event("startup")
