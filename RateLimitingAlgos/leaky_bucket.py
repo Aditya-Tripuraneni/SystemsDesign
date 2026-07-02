@@ -42,10 +42,16 @@ class RateLimiterLeakyBucket:
 class RateLimiterManagerLeakyBucket:
     def __init__(self):
         self.limiters = {}
-        self.lock = Lock()
+        self.lock = None
+
+    async def _get_lock(self):
+        if self.lock is None:
+            self.lock = Lock()
+        return self.lock
 
     async def addUser(self, ipAddress):
-        async with self.lock: 
+        lock = await self._get_lock()
+        async with lock:
             if ipAddress not in self.limiters:
                 limiter = RateLimiterLeakyBucket(capacity=2, processInterval=2)
                 await limiter.start()
@@ -53,11 +59,13 @@ class RateLimiterManagerLeakyBucket:
             return self.limiters[ipAddress]
 
     async def getUser(self, ipAddress):
-        async with self.lock: 
+        lock = await self._get_lock()
+        async with lock:
             return self.limiters[ipAddress]
 
     async def getOrCreateUser(self, ipAddress):
-        async with self.lock:
+        lock = await self._get_lock()
+        async with lock:
             if ipAddress not in self.limiters:
                 limiter = RateLimiterLeakyBucket(capacity=2, processInterval=2)
                 await limiter.start()
@@ -66,6 +74,7 @@ class RateLimiterManagerLeakyBucket:
             return self.limiters[ipAddress]
         
     async def stopAll(self):
-        async with self.lock:
+        lock = await self._get_lock()
+        async with lock:
             for limiter in self.limiters.values():
                 await limiter.stop()

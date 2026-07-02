@@ -55,11 +55,17 @@ class RateLimiterManagerTokenBucket:
 
     def __init__(self):
         self.limiters = {}
-        self.lock = Lock()
+        self.lock = None
+
+    async def _get_lock(self):
+        if self.lock is None:
+            self.lock = Lock()
+        return self.lock
 
     async def addUser(self, ipAddress):
         """Create a limiter for a client key if it does not already exist."""
-        async with self.lock:
+        lock = await self._get_lock()
+        async with lock:
             if ipAddress not in self.limiters:
                 limiter = RateLimiterTokenBucket()
                 await limiter.start()
@@ -68,12 +74,14 @@ class RateLimiterManagerTokenBucket:
 
     async def getUser(self, ipAddress):
         """Return the limiter for an existing client key."""
-        async with self.lock:
+        lock = await self._get_lock()
+        async with lock:
             return self.limiters[ipAddress]
 
     async def getOrCreateUser(self, ipAddress):
         """Return an existing limiter or create a new one for the client key."""
-        async with self.lock:
+        lock = await self._get_lock()
+        async with lock:
             if ipAddress not in self.limiters:
                 limiter = RateLimiterTokenBucket()
                 await limiter.start()
@@ -82,6 +90,7 @@ class RateLimiterManagerTokenBucket:
 
     async def stopAll(self):
         """Stop every running limiter before shutdown."""
-        async with self.lock:
+        lock = await self._get_lock()
+        async with lock:
             for limiter in self.limiters.values():
                 await limiter.stop()
